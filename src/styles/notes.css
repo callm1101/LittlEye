@@ -1,0 +1,4 @@
+.note-list article.selected { border-color: #df7353; }
+.note-open { width: 100%; padding: 0; text-align: left; background: transparent; }
+.note-controls { display: flex; gap: .5rem; margin-top: .75rem; }
+.note-controls button { padding: .35rem .55rem; font-size: .8rem; }

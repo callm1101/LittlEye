@@ -1,0 +1,12 @@
+.settings-group { margin-top: 1.5rem; border-top: 1px solid #eaded5; }
+.settings-group h2 { margin: 1.25rem 0 .25rem; font-size: 1.05rem; }
+.monitor-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: .75rem; padding: .8rem; border-radius: 10px; background: rgba(219, 111, 79, .08); }
+.monitor-card p { margin: .25rem 0 0; color: #796e68; font-size: .85rem; }
+.status-dot { width: .7rem; height: .7rem; flex: 0 0 auto; border-radius: 50%; background: #a79c95; }
+.status-dot.connected { background: #4f9a63; box-shadow: 0 0 0 4px rgba(79, 154, 99, .14); }
+.pairing { display: grid; min-width: 0; gap: .45rem; margin-top: .85rem; padding: .8rem; overflow: hidden; border: 1px solid #eaded5; border-radius: 10px; }
+.pairing small { color: #796e68; }
+.pairing > div { display: flex; min-width: 0; align-items: center; gap: .5rem; }
+.pairing code { overflow: hidden; min-width: 0; max-width: 100%; flex: 1 1 auto; padding: .55rem; border-radius: 7px; background: rgba(55, 46, 42, .07); text-overflow: ellipsis; white-space: nowrap; user-select: all; }
+.pairing button { flex: 0 0 auto; }
+.browser-reminder .angry { color: #ba573f; }

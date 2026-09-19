@@ -1,0 +1,11 @@
+:root { color: #372e2a; background: #fffaf5; font: 15px/1.55 system-ui, sans-serif; }
+body { margin: 0; }
+main { max-width: 620px; margin: 3rem auto; padding: 1.5rem; }
+h1 { margin-top: 0; }
+label { display: block; margin: 1.5rem 0 .4rem; font-weight: 700; }
+input { width: 100%; box-sizing: border-box; padding: .75rem; border: 1px solid #d9ccc2; border-radius: 8px; font: inherit; }
+.actions { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; }
+button { padding: .7rem 1rem; border: 0; border-radius: 8px; color: white; background: #db6f4f; font: inherit; cursor: pointer; }
+#status { color: #796e68; }
+section { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid #eaded5; }
+section p { color: #655b56; }

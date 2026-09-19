@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>小眼睛扩展设置</title>
+    <link rel="stylesheet" href="src/options.css" />
+  </head>
+  <body>
+    <main>
+      <h1>小眼睛 · 哔哩哔哩提醒</h1>
+      <p>先打开桌面端“设置 → 哔哩哔哩观看提醒”，复制配对令牌并粘贴到这里。</p>
+      <label for="token">配对令牌</label>
+      <input id="token" type="password" autocomplete="off" spellcheck="false" />
+      <div class="actions"><button id="save">保存并测试连接</button><span id="status" role="status"></span></div>
+      <section>
+        <h2>隐私说明</h2>
+        <p>扩展只在 bilibili.com 页面中运行，只发送页面当前是否可见且聚焦以及事件时间戳。它不会读取或发送视频标题、播放进度、账号、搜索词、页面正文或其他网站的 URL。</p>
+      </section>
+    </main>
+    <script src="src/options.js"></script>
+  </body>
+</html>

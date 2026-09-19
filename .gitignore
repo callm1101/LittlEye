@@ -1,0 +1,12 @@
+# JavaScript build artifacts
+node_modules/
+dist/
+
+# Tauri/Rust build artifacts
+src-tauri/target/
+
+# Local application state and editor files
+.DS_Store
+.env
+.env.*
+!.env.example

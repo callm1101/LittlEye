@@ -1,0 +1,84 @@
+.sticky-note {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 1rem;
+  background:
+    linear-gradient(rgba(120, 90, 24, .055) 1px, transparent 1px) 0 3.55rem / 100% 1.65rem,
+    radial-gradient(circle at 92% 4%, rgba(255, 255, 255, .65), transparent 28%),
+    #fff1a8;
+  box-shadow: inset 0 0 0 1px rgba(112, 83, 20, .12);
+}
+
+.sticky-note .widget-head {
+  min-height: 2.5rem;
+  border-bottom: 1px solid rgba(112, 83, 20, .14);
+  padding-bottom: .55rem;
+}
+
+.sticky-note .drag-handle {
+  min-width: 0;
+}
+
+.sticky-note .mascot { color: #9d681e; }
+.sticky-note .app-name {
+  overflow: hidden;
+  color: #77561f;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.window-actions { display: flex; gap: .25rem; }
+.icon-button.active { background: #9d681e; color: #fff8cf; }
+
+.sticky-editor {
+  flex: 1;
+  width: 100%;
+  min-height: 220px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  padding: .85rem .25rem;
+  color: #493716;
+  background: transparent;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.sticky-editor::placeholder { color: rgba(92, 67, 22, .52); }
+.sticky-editor:focus-visible { outline: 0; }
+
+.sticky-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2rem;
+  color: rgba(73, 55, 22, .65);
+  font-size: .75rem;
+}
+
+.sticky-footer .actions { gap: .2rem; }
+.text-button {
+  padding: .35rem .45rem;
+  color: #6f501d;
+  background: transparent;
+  font-size: .75rem;
+}
+.text-button:hover { background: rgba(112, 83, 20, .09); }
+.text-button:disabled { cursor: default; opacity: .4; }
+
+@media (prefers-color-scheme: dark) {
+  :root { color: #ede3cf; background: #2e2922; }
+  .sticky-note {
+    background:
+      linear-gradient(rgba(255, 231, 161, .05) 1px, transparent 1px) 0 3.55rem / 100% 1.65rem,
+      radial-gradient(circle at 92% 4%, rgba(255, 220, 136, .09), transparent 28%),
+      #3b3322;
+    box-shadow: inset 0 0 0 1px rgba(255, 226, 151, .13);
+  }
+  .sticky-note .app-name, .sticky-note .mascot, .sticky-editor { color: #f5df9d; }
+  .sticky-editor::placeholder { color: rgba(245, 223, 157, .46); }
+  .sticky-footer, .text-button { color: rgba(245, 223, 157, .72); }
+  .page { background: #2e2922; }
+  button, input, textarea, select { color: #ede3cf; background-color: #443d34; }
+}
