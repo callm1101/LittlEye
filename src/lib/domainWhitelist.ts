@@ -1,4 +1,4 @@
-export const defaultBrowserDomains = ["bilibili.com"];
+export const defaultBrowserDomains = ["bilibili.com", "xiaohongshu.com"];
 
 export function normalizeDomain(value: string): string | undefined {
   const trimmed = value.trim().toLowerCase();

@@ -15,7 +15,7 @@ describe("website whitelist", () => {
     expect(normalizeDomainList(["Example.com", "https://example.com/a", "openai.com"])).toEqual(["example.com", "openai.com"]);
   });
 
-  it("falls back to bilibili.com for missing stored configuration", () => {
-    expect(parseStoredDomains("not-json")).toEqual(["bilibili.com"]);
+  it("falls back to the default websites for missing stored configuration", () => {
+    expect(parseStoredDomains("not-json")).toEqual(["bilibili.com", "xiaohongshu.com"]);
   });
 });
