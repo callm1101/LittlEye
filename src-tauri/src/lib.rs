@@ -168,6 +168,9 @@ pub fn run() {
       let browser_monitor_app = app.handle().clone();
       std::thread::spawn(move || run_browser_monitor_server(browser_monitor_app));
       if let Some(window) = app.get_webview_window("main") {
+        if let Some(icon) = app.default_window_icon() {
+          window.set_icon(icon.clone())?;
+        }
         window.set_always_on_top(true)?;
         let close_window = window.clone();
         window.on_window_event(move |event| {
@@ -182,8 +185,11 @@ pub fn run() {
       let settings = MenuItem::with_id(app, "settings", "打开设置", true, None::<&str>)?;
       let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
       let menu = Menu::with_items(app, &[&toggle, &remind, &settings, &quit])?;
-      TrayIconBuilder::with_id("main-tray")
-        .menu(&menu)
+      let mut tray_builder = TrayIconBuilder::with_id("main-tray").menu(&menu);
+      if let Some(icon) = app.default_window_icon() {
+        tray_builder = tray_builder.icon(icon.clone());
+      }
+      tray_builder
         .on_menu_event(|app, event| match event.id().as_ref() {
           "toggle" => {
             if let Some(window) = app.get_webview_window("main") {

@@ -12,6 +12,15 @@ export async function notifyReminder() {
   if (isTauri()) await invoke("show_system_notification");
 }
 
+export function speakHydrationReminder() {
+  if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return;
+  const message = new SpeechSynthesisUtterance("该起来活动一下，喝点水啦。");
+  message.lang = "zh-CN";
+  message.rate = 0.95;
+  message.volume = 0.9;
+  window.speechSynthesis.speak(message);
+}
+
 export async function startWindowDragging() {
   if (isTauri()) await invoke("start_window_dragging");
 }
