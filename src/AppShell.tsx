@@ -17,7 +17,7 @@ export function AppShell() {
   const [snoozeMinutes, setSnoozeMinutes] = useState(10);
   const [alwaysOnTop, setAlwaysOnTopState] = useState(true);
   const [voiceReminderEnabled, setVoiceReminderEnabled] = useState(false);
-  const [windowOpacity, setWindowOpacity] = useState(88);
+  const [windowOpacity, setWindowOpacity] = useState(75);
   const [browserMonitorEnabled, setBrowserMonitorEnabled] = useState(false);
   const [browserThresholdMinutes, setBrowserThresholdMinutes] = useState(30);
   const [browserToken, setBrowserToken] = useState("");
@@ -30,7 +30,7 @@ export function AppShell() {
     void settingsRepository.getNumber("reminder.intervalMinutes", 60).then(setIntervalMinutes);
     void settingsRepository.getNumber("reminder.snoozeMinutes", 10).then(setSnoozeMinutes);
     void settingsRepository.getBoolean("reminder.voiceEnabled", false).then(setVoiceReminderEnabled);
-    void settingsRepository.getNumber("window.opacity", 88).then(setWindowOpacity);
+    void settingsRepository.getNumber("window.opacity", 75).then(setWindowOpacity);
     void settingsRepository.getBoolean("window.alwaysOnTop", true).then(enabled => { setAlwaysOnTopState(enabled); void setAlwaysOnTop(enabled); });
   }, []);
   useEffect(() => { void (async () => { setBrowserMonitorEnabled(await settingsRepository.getBoolean("browser.enabled", false)); setBrowserThresholdMinutes(await settingsRepository.getNumber("browser.thresholdMinutes", 30)); let token = await settingsRepository.getString("browser.token", ""); if (!token) { token = crypto.randomUUID().replace(/-/g, ""); await settingsRepository.set("browser.token", token); } setBrowserToken(token); })(); }, []);

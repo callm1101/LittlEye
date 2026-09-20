@@ -81,7 +81,7 @@ export function SettingsPage({
     <label className="setting">
       <span><strong>便利贴透明度</strong><small>降低后能看到便利贴后面的桌面内容</small></span>
       <span className="setting-control">
-        <input type="range" min="65" max="100" step="1" value={windowOpacity} onChange={event => onWindowOpacityChange(Number(event.target.value))} aria-label="便利贴透明度" />
+        <input type="range" min="10" max="100" step="1" value={windowOpacity} onChange={event => onWindowOpacityChange(Number(event.target.value))} aria-label="便利贴透明度" />
         <output>{windowOpacity}%</output>
       </span>
     </label>
