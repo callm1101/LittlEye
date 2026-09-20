@@ -1,18 +1,18 @@
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { calculateActiveIncrement, localDayKey, nextLocalMidnight, shouldShowBrowserAlert, type BrowserUsageState } from "../lib/browserUsageState";
+import { addDomainUsage, calculateActiveIncrement, emptyBrowserUsageState, findBrowserAlertDomain, localDayKey, nextLocalMidnight, type BrowserUsageState } from "../lib/browserUsageState";
 import { browserUsageRepository } from "../repositories/browserUsageRepository";
 
-type ActivityEvent = { active: boolean; at: number };
+type ActivityEvent = { active: boolean; at: number; domain: string };
 
 export function useBrowserUsageMonitor(enabled: boolean, thresholdMinutes: number) {
-  const [state, setState] = useState<BrowserUsageState>({ dayLocal: localDayKey(), accumulatedSeconds: 0 });
+  const [state, setState] = useState<BrowserUsageState>(() => emptyBrowserUsageState());
   const [ready, setReady] = useState(false);
-  const [isShowing, setIsShowing] = useState(false);
+  const [alertDomain, setAlertDomain] = useState<string>();
   const [connected, setConnected] = useState(false);
-  const [active, setActive] = useState(false);
+  const [activeDomain, setActiveDomain] = useState<string>();
   const [tick, setTick] = useState(Date.now());
-  const activeRef = useRef(false);
+  const activeDomainRef = useRef<string>();
   const lastEventAtRef = useRef<number>();
   const lastSeenAtRef = useRef<number>();
 
@@ -20,38 +20,82 @@ export function useBrowserUsageMonitor(enabled: boolean, thresholdMinutes: numbe
   useEffect(() => { if (ready) void browserUsageRepository.save(state); }, [ready, state]);
   useEffect(() => { const timer = window.setInterval(() => setTick(Date.now()), 1_000); return () => window.clearInterval(timer); }, []);
   useEffect(() => {
-    if (!enabled) { activeRef.current = false; setActive(false); setConnected(false); return; }
+    if (!enabled) {
+      activeDomainRef.current = undefined;
+      setActiveDomain(undefined);
+      setConnected(false);
+      return;
+    }
     let unlisten: (() => void) | undefined;
     void listen<ActivityEvent>("browser-activity", event => {
-      const at = event.payload.at;
-      const increment = activeRef.current ? calculateActiveIncrement(lastEventAtRef.current, at) : 0;
-      setState(current => ({ ...current, accumulatedSeconds: current.accumulatedSeconds + increment }));
-      activeRef.current = event.payload.active;
+      const { active, at, domain } = event.payload;
+      const previousDomain = activeDomainRef.current;
+      const increment = previousDomain ? calculateActiveIncrement(lastEventAtRef.current, at) : 0;
+      if (previousDomain && increment > 0) setState(current => addDomainUsage(current, previousDomain, increment));
+      activeDomainRef.current = active ? domain : undefined;
       lastEventAtRef.current = at;
       lastSeenAtRef.current = Date.now();
-      setActive(event.payload.active);
+      setActiveDomain(active ? domain : undefined);
       setConnected(true);
     }).then(callback => { unlisten = callback; });
     return () => unlisten?.();
   }, [enabled]);
   useEffect(() => {
     if (state.dayLocal !== localDayKey(new Date(tick))) {
-      setState({ dayLocal: localDayKey(new Date(tick)), accumulatedSeconds: 0 });
-      setIsShowing(false);
+      setState(emptyBrowserUsageState(new Date(tick)));
+      setAlertDomain(undefined);
     }
     if (lastSeenAtRef.current && tick - lastSeenAtRef.current > 35_000) {
-      activeRef.current = false; setActive(false); setConnected(false);
+      activeDomainRef.current = undefined;
+      setActiveDomain(undefined);
+      setConnected(false);
     }
   }, [state.dayLocal, tick]);
   useEffect(() => {
-    if (ready && enabled && !isShowing && shouldShowBrowserAlert(state, thresholdMinutes, tick)) setIsShowing(true);
-  }, [enabled, isShowing, ready, state, thresholdMinutes, tick]);
+    if (!ready || !enabled || alertDomain) return;
+    setAlertDomain(findBrowserAlertDomain(state, thresholdMinutes, tick));
+  }, [alertDomain, enabled, ready, state, thresholdMinutes, tick]);
 
-  const reset = useCallback(() => { activeRef.current = false; setActive(false); setState({ dayLocal: localDayKey(), accumulatedSeconds: 0 }); setIsShowing(false); }, []);
-  const snooze = useCallback(() => { setState(current => ({ ...current, snoozedUntil: Date.now() + 10 * 60_000 })); setIsShowing(false); }, []);
-  const muteToday = useCallback(() => { setState(current => ({ ...current, mutedUntil: nextLocalMidnight() })); setIsShowing(false); }, []);
-  const resumeToday = useCallback(() => { setState(current => ({ ...current, mutedUntil: undefined, snoozedUntil: undefined })); }, []);
-  const clear = useCallback(async () => { await browserUsageRepository.clear(); reset(); }, [reset]);
+  const reset = useCallback(() => {
+    if (!alertDomain) return;
+    setState(current => ({ ...current, domains: { ...current.domains, [alertDomain]: { accumulatedSeconds: 0 } } }));
+    setAlertDomain(undefined);
+  }, [alertDomain]);
+  const snooze = useCallback(() => {
+    if (!alertDomain) return;
+    setState(current => ({ ...current, domains: { ...current.domains, [alertDomain]: { ...current.domains[alertDomain], snoozedUntil: Date.now() + 10 * 60_000 } } }));
+    setAlertDomain(undefined);
+  }, [alertDomain]);
+  const muteToday = useCallback(() => {
+    if (!alertDomain) return;
+    setState(current => ({ ...current, domains: { ...current.domains, [alertDomain]: { ...current.domains[alertDomain], mutedUntil: nextLocalMidnight() } } }));
+    setAlertDomain(undefined);
+  }, [alertDomain]);
+  const resumeToday = useCallback(() => {
+    setState(current => ({
+      ...current,
+      domains: Object.fromEntries(Object.entries(current.domains).map(([domain, usage]) => [domain, { ...usage, mutedUntil: undefined, snoozedUntil: undefined }])),
+    }));
+  }, []);
+  const clear = useCallback(async () => {
+    await browserUsageRepository.clear();
+    activeDomainRef.current = undefined;
+    setActiveDomain(undefined);
+    setState(emptyBrowserUsageState());
+    setAlertDomain(undefined);
+  }, []);
 
-  return { accumulatedSeconds: state.accumulatedSeconds, mutedUntil: state.mutedUntil, active, connected, isShowing, reset, snooze, muteToday, resumeToday, clear };
+  return {
+    usageByDomain: Object.fromEntries(Object.entries(state.domains).map(([domain, usage]) => [domain, usage.accumulatedSeconds])),
+    hasMutedDomains: Object.values(state.domains).some(usage => Boolean(usage.mutedUntil && usage.mutedUntil > tick)),
+    activeDomain,
+    connected,
+    alertDomain,
+    isShowing: Boolean(alertDomain),
+    reset,
+    snooze,
+    muteToday,
+    resumeToday,
+    clear,
+  };
 }

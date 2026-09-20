@@ -12,14 +12,21 @@ use tauri::{
 use tauri_plugin_notification::NotificationExt;
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 
+#[derive(Clone, Default)]
+struct BrowserMonitorConfig {
+  token: Option<String>,
+  domains: Vec<String>,
+}
+
 #[derive(Default)]
-struct BrowserMonitorAuth(Mutex<Option<String>>);
+struct BrowserMonitorAuth(Mutex<BrowserMonitorConfig>);
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 struct BrowserActivityEvent {
   active: bool,
   at: u64,
+  domain: String,
 }
 
 #[tauri::command]
@@ -35,9 +42,10 @@ fn start_window_dragging(window: WebviewWindow) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn set_browser_monitor_token(
+fn set_browser_monitor_config(
   state: tauri::State<BrowserMonitorAuth>,
   token: Option<String>,
+  domains: Vec<String>,
 ) -> Result<(), String> {
   if token
     .as_ref()
@@ -45,11 +53,30 @@ fn set_browser_monitor_token(
   {
     return Err("invalid browser monitor token".into());
   }
+  if domains.is_empty() || domains.len() > 32 || domains.iter().any(|value| !is_valid_domain(value))
+  {
+    return Err("invalid browser monitor domains".into());
+  }
   *state
     .0
     .lock()
-    .map_err(|_| "browser monitor state unavailable")? = token;
+    .map_err(|_| "browser monitor state unavailable")? = BrowserMonitorConfig { token, domains };
   Ok(())
+}
+
+fn is_valid_domain(value: &str) -> bool {
+  if value.is_empty() || value.len() > 253 || value.starts_with('.') || value.ends_with('.') {
+    return false;
+  }
+  value.split('.').all(|label| {
+    !label.is_empty()
+      && label.len() <= 63
+      && !label.starts_with('-')
+      && !label.ends_with('-')
+      && label
+        .bytes()
+        .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+  })
 }
 
 fn header(request: &Request, name: &str) -> Option<String> {
@@ -64,7 +91,7 @@ fn respond(request: Request, status: u16, body: &str) {
   let mut response = Response::from_string(body).with_status_code(StatusCode(status));
   for (name, value) in [
     ("Access-Control-Allow-Origin", "*"),
-    ("Access-Control-Allow-Methods", "POST, OPTIONS"),
+    ("Access-Control-Allow-Methods", "GET, POST, OPTIONS"),
     (
       "Access-Control-Allow-Headers",
       "Content-Type, X-LittleEye-Token",
@@ -87,22 +114,31 @@ fn run_browser_monitor_server(app: AppHandle) {
       respond(request, 204, "");
       continue;
     }
-    if request.method() != &Method::Post || request.url() != "/activity" {
-      respond(request, 404, "{\"ok\":false}");
-      continue;
-    }
     let origin_valid =
       header(&request, "Origin").is_some_and(|origin| origin.starts_with("chrome-extension://"));
     let supplied_token = header(&request, "X-LittleEye-Token");
-    let token_valid = app
-      .state::<BrowserMonitorAuth>()
-      .0
-      .lock()
-      .ok()
-      .and_then(|value| value.clone())
+    let monitor_state = app.state::<BrowserMonitorAuth>();
+    let Ok(config_guard) = monitor_state.0.lock() else {
+      respond(request, 503, "{\"ok\":false}");
+      continue;
+    };
+    let config = config_guard.clone();
+    drop(config_guard);
+    let token_valid = config
+      .token
+      .as_ref()
       .is_some_and(|expected| supplied_token.as_deref() == Some(expected.as_str()));
     if !origin_valid || !token_valid {
       respond(request, 401, "{\"ok\":false}");
+      continue;
+    }
+    if request.method() == &Method::Get && request.url() == "/config" {
+      let body = serde_json::json!({ "domains": config.domains }).to_string();
+      respond(request, 200, &body);
+      continue;
+    }
+    if request.method() != &Method::Post || request.url() != "/activity" {
+      respond(request, 404, "{\"ok\":false}");
       continue;
     }
     let mut body = String::new();
@@ -119,6 +155,10 @@ fn run_browser_monitor_server(app: AppHandle) {
       respond(request, 400, "{\"ok\":false}");
       continue;
     };
+    if !config.domains.iter().any(|domain| domain == &event.domain) {
+      respond(request, 401, "{\"ok\":false}");
+      continue;
+    }
     let now = SystemTime::now()
       .duration_since(UNIX_EPOCH)
       .map(|value| value.as_millis() as u64)
@@ -160,7 +200,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       set_always_on_top,
       start_window_dragging,
-      set_browser_monitor_token,
+      set_browser_monitor_config,
       show_reminder,
       show_system_notification
     ])
@@ -219,4 +259,22 @@ pub fn run() {
     })
     .run(tauri::generate_context!())
     .expect("error while running LittleEye");
+}
+
+#[cfg(test)]
+mod tests {
+  use super::is_valid_domain;
+
+  #[test]
+  fn accepts_normalized_domains() {
+    assert!(is_valid_domain("bilibili.com"));
+    assert!(is_valid_domain("docs.example.co.uk"));
+  }
+
+  #[test]
+  fn rejects_urls_wildcards_and_invalid_labels() {
+    assert!(!is_valid_domain("https://example.com"));
+    assert!(!is_valid_domain("*.example.com"));
+    assert!(!is_valid_domain("-bad.example"));
+  }
 }

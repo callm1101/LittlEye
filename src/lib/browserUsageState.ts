@@ -1,9 +1,17 @@
-export type BrowserUsageState = {
-  dayLocal: string;
+export type DomainUsageState = {
   accumulatedSeconds: number;
   snoozedUntil?: number;
   mutedUntil?: number;
 };
+
+export type BrowserUsageState = {
+  dayLocal: string;
+  domains: Record<string, DomainUsageState>;
+};
+
+export function emptyBrowserUsageState(date = new Date()): BrowserUsageState {
+  return { dayLocal: localDayKey(date), domains: {} };
+}
 
 export function localDayKey(date = new Date()) {
   const year = date.getFullYear();
@@ -24,8 +32,20 @@ export function calculateActiveIncrement(previousAt: number | undefined, current
   return seconds >= 0 && seconds <= 30 ? seconds : 0;
 }
 
-export function shouldShowBrowserAlert(state: BrowserUsageState, thresholdMinutes: number, now: number) {
-  return state.accumulatedSeconds >= thresholdMinutes * 60
-    && (!state.snoozedUntil || now >= state.snoozedUntil)
-    && (!state.mutedUntil || now >= state.mutedUntil);
+export function addDomainUsage(state: BrowserUsageState, domain: string, seconds: number): BrowserUsageState {
+  if (seconds <= 0) return state;
+  const current = state.domains[domain] ?? { accumulatedSeconds: 0 };
+  return {
+    ...state,
+    domains: {
+      ...state.domains,
+      [domain]: { ...current, accumulatedSeconds: current.accumulatedSeconds + seconds },
+    },
+  };
+}
+
+export function findBrowserAlertDomain(state: BrowserUsageState, thresholdMinutes: number, now: number) {
+  return Object.entries(state.domains).find(([, usage]) => usage.accumulatedSeconds >= thresholdMinutes * 60
+    && (!usage.snoozedUntil || now >= usage.snoozedUntil)
+    && (!usage.mutedUntil || now >= usage.mutedUntil))?.[0];
 }

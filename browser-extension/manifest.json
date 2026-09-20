@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "小眼睛 Bilibili 专注提醒",
-  "version": "0.1.0",
-  "description": "仅在 bilibili.com 前台可见时，向小眼睛发送最小活跃状态事件。",
-  "permissions": ["storage"],
-  "host_permissions": ["*://*.bilibili.com/*", "http://127.0.0.1:47831/*"],
+  "minimum_chrome_version": "102",
+  "name": "小眼睛网站浏览提醒",
+  "version": "0.2.0",
+  "description": "仅在用户授权的白名单网站前台可见时，向小眼睛发送最小活跃状态事件。",
+  "permissions": ["storage", "scripting"],
+  "host_permissions": ["http://127.0.0.1:47831/*"],
+  "optional_host_permissions": ["*://*/*"],
   "background": { "service_worker": "src/background.js", "type": "module" },
-  "content_scripts": [{ "matches": ["*://*.bilibili.com/*"], "js": ["src/content.js"] }],
   "options_page": "options.html"
 }

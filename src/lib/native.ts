@@ -25,6 +25,6 @@ export async function startWindowDragging() {
   if (isTauri()) await invoke("start_window_dragging");
 }
 
-export async function setBrowserMonitorToken(token: string | null) {
-  if (isTauri()) await invoke("set_browser_monitor_token", { token });
+export async function setBrowserMonitorConfig(token: string | null, domains: string[]) {
+  if (isTauri()) await invoke("set_browser_monitor_config", { token, domains });
 }

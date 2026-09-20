@@ -8,14 +8,18 @@
   </head>
   <body>
     <main>
-      <h1>小眼睛 · 哔哩哔哩提醒</h1>
-      <p>先打开桌面端“设置 → 哔哩哔哩观看提醒”，复制配对令牌并粘贴到这里。</p>
+      <h1>小眼睛 · 网站浏览提醒</h1>
+      <p>先在桌面端“设置 → 网站浏览提醒”中维护白名单并启用功能，再复制配对令牌。</p>
       <label for="token">配对令牌</label>
       <input id="token" type="password" autocomplete="off" spellcheck="false" />
-      <div class="actions"><button id="save">保存并测试连接</button><span id="status" role="status"></span></div>
+      <div class="actions"><button id="save">保存并读取白名单</button><span id="status" role="status"></span></div>
+      <label for="domains">桌面端白名单</label>
+      <textarea id="domains" rows="6" readonly placeholder="尚未从桌面端读取"></textarea>
+      <button id="authorize" disabled>同步白名单并授权</button>
+      <p class="hint">浏览器会显示网站权限确认。扩展只会在你确认的域名及其子域名中运行；已打开的页面需要刷新。</p>
       <section>
         <h2>隐私说明</h2>
-        <p>扩展只在 bilibili.com 页面中运行，只发送页面当前是否可见且聚焦以及事件时间戳。它不会读取或发送视频标题、播放进度、账号、搜索词、页面正文或其他网站的 URL。</p>
+        <p>扩展只在你明确授权的白名单网站中运行，只发送匹配的白名单域名、页面当前是否可见且聚焦以及事件时间戳。它不会读取或发送完整网址、标题、账号、搜索词、页面正文或浏览历史。</p>
       </section>
     </main>
     <script src="src/options.js"></script>

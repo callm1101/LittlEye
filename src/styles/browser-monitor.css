@@ -10,3 +10,14 @@
 .pairing code { overflow: hidden; min-width: 0; max-width: 100%; flex: 1 1 auto; padding: .55rem; border-radius: 7px; background: rgba(55, 46, 42, .07); text-overflow: ellipsis; white-space: nowrap; user-select: all; }
 .pairing button { flex: 0 0 auto; }
 .browser-reminder .angry { color: #ba573f; }
+.whitelist-editor { display: grid; gap: .5rem; padding: 1rem 0; border-bottom: 1px solid #eaded5; }
+.domain-list { display: flex; flex-wrap: wrap; gap: .4rem; }
+.domain-chip { display: inline-flex; max-width: 100%; align-items: center; gap: .25rem; padding: .3rem .35rem .3rem .55rem; border-radius: 999px; background: rgba(219, 111, 79, .1); overflow-wrap: anywhere; }
+.domain-chip button { flex: 0 0 auto; padding: .05rem .35rem; border-radius: 999px; background: transparent; }
+.domain-entry { display: flex; gap: .5rem; }
+.domain-entry input { min-width: 0; flex: 1; padding: .65rem; border: 1px solid #dbcfc6; border-radius: 9px; }
+.field-error { color: #ad3f2d; }
+.usage-list { display: grid; gap: .25rem; margin: .35rem 0 0; padding: 0; list-style: none; color: #796e68; font-size: .85rem; }
+.usage-list li { display: flex; justify-content: space-between; gap: 1rem; }
+.usage-list li span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.monitor-card > div { min-width: 0; flex: 1; }
