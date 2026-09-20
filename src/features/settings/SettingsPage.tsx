@@ -12,6 +12,7 @@ type Props = {
   alwaysOnTop: boolean;
   windowOpacity: number;
   browserMonitorEnabled: boolean;
+  browserSettingsReady: boolean;
   browserThresholdMinutes: number;
   browserAllowedDomains: string[];
   browserToken: string;
@@ -39,6 +40,7 @@ export function SettingsPage({
   alwaysOnTop,
   windowOpacity,
   browserMonitorEnabled,
+  browserSettingsReady,
   browserThresholdMinutes,
   browserAllowedDomains,
   browserToken,
@@ -60,11 +62,6 @@ export function SettingsPage({
 }: Props) {
   const [domainDraft, setDomainDraft] = useState("");
   const [domainError, setDomainError] = useState("");
-
-  function changeBrowserEnabled(enabled: boolean) {
-    if (enabled && !window.confirm("启用后，扩展只会在你明确授权的白名单网站处于前台、可见且聚焦时发送域名、活跃状态和时间戳。不会读取完整网址、账号或页面内容，数据仅保存在本机。是否继续？")) return;
-    onBrowserEnabledChange(enabled);
-  }
 
   function addDomain() {
     const domain = normalizeDomain(domainDraft);
@@ -115,9 +112,10 @@ export function SettingsPage({
     <section className="settings-group" aria-labelledby="browser-monitor-title">
       <h2 id="browser-monitor-title">网站浏览提醒</h2>
       <label className="setting">
-        <span><strong>启用浏览器监测</strong><small>需要安装项目附带的浏览器扩展并完成本地配对</small></span>
-        <input type="checkbox" checked={browserMonitorEnabled} onChange={event => changeBrowserEnabled(event.target.checked)} />
+        <span><strong>启用浏览器监测</strong><small>{browserSettingsReady ? "需要安装项目附带的浏览器扩展并完成本地配对" : "正在加载浏览器监测设置…"}</small></span>
+        <input type="checkbox" checked={browserMonitorEnabled} disabled={!browserSettingsReady} onChange={event => onBrowserEnabledChange(event.target.checked)} />
       </label>
+      <p className="monitor-privacy">扩展只会在你授权的白名单网站处于前台、可见且聚焦时发送匹配域名、活跃状态和时间戳；不会读取完整网址、账号或页面内容，数据仅保存在本机。</p>
       <label className="setting">
         <span><strong>单个网站提醒阈值</strong><small>每个白名单域名单独累计前台、可见且聚焦的浏览时间</small></span>
         <select value={browserThresholdMinutes} onChange={event => onBrowserThresholdChange(Number(event.target.value))}>

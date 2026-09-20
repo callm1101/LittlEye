@@ -20,6 +20,7 @@ export function AppShell() {
   const [voiceReminderEnabled, setVoiceReminderEnabled] = useState(false);
   const [windowOpacity, setWindowOpacity] = useState(75);
   const [browserMonitorEnabled, setBrowserMonitorEnabled] = useState(false);
+  const [browserSettingsReady, setBrowserSettingsReady] = useState(false);
   const [browserThresholdMinutes, setBrowserThresholdMinutes] = useState(30);
   const [browserAllowedDomains, setBrowserAllowedDomains] = useState<string[]>(defaultBrowserDomains);
   const [browserToken, setBrowserToken] = useState("");
@@ -36,12 +37,16 @@ export function AppShell() {
     void settingsRepository.getBoolean("window.alwaysOnTop", true).then(enabled => { setAlwaysOnTopState(enabled); void setAlwaysOnTop(enabled); });
   }, []);
   useEffect(() => { void (async () => {
-    setBrowserMonitorEnabled(await settingsRepository.getBoolean("browser.enabled", false));
-    setBrowserThresholdMinutes(await settingsRepository.getNumber("browser.thresholdMinutes", 30));
-    setBrowserAllowedDomains(parseStoredDomains(await settingsRepository.getString("browser.allowedDomains", JSON.stringify(defaultBrowserDomains))));
-    let token = await settingsRepository.getString("browser.token", "");
-    if (!token) { token = crypto.randomUUID().replace(/-/g, ""); await settingsRepository.set("browser.token", token); }
-    setBrowserToken(token);
+    try {
+      setBrowserMonitorEnabled(await settingsRepository.getBoolean("browser.enabled", false));
+      setBrowserThresholdMinutes(await settingsRepository.getNumber("browser.thresholdMinutes", 30));
+      setBrowserAllowedDomains(parseStoredDomains(await settingsRepository.getString("browser.allowedDomains", JSON.stringify(defaultBrowserDomains))));
+      let token = await settingsRepository.getString("browser.token", "");
+      if (!token) { token = crypto.randomUUID().replace(/-/g, ""); await settingsRepository.set("browser.token", token); }
+      setBrowserToken(token);
+    } finally {
+      setBrowserSettingsReady(true);
+    }
   })(); }, []);
   useEffect(() => { void setBrowserMonitorConfig(browserMonitorEnabled && browserToken ? browserToken : null, browserAllowedDomains); }, [browserAllowedDomains, browserMonitorEnabled, browserToken]);
   useEffect(() => { if (scheduler.isShowing) void notifyReminder(); }, [scheduler.isShowing]);
@@ -81,7 +86,7 @@ export function AppShell() {
     {view === "widget" && <WidgetWindow remainingMs={scheduler.remainingMs} paused={scheduler.paused} stickyText={stickyText} alwaysOnTop={alwaysOnTop}
       onStickyTextChange={setStickyText} onClear={() => setStickyText("")} onOpenSettings={() => setView("settings")}
       onTogglePause={scheduler.togglePause} onTogglePin={() => void updateAlwaysOnTop(!alwaysOnTop)} />}
-    {view === "settings" && <SettingsPage intervalMinutes={intervalMinutes} snoozeMinutes={snoozeMinutes} voiceReminderEnabled={voiceReminderEnabled} alwaysOnTop={alwaysOnTop} windowOpacity={windowOpacity} browserMonitorEnabled={browserMonitorEnabled} browserThresholdMinutes={browserThresholdMinutes} browserAllowedDomains={browserAllowedDomains} browserToken={browserToken} browserConnected={browserMonitor.connected} browserActiveDomain={browserMonitor.activeDomain} browserUsageByDomain={browserMonitor.usageByDomain} browserMutedToday={browserMonitor.hasMutedDomains} onIntervalChange={updateInterval} onSnoozeChange={updateSnooze} onVoiceReminderChange={updateVoiceReminder} onAlwaysOnTopChange={updateAlwaysOnTop} onWindowOpacityChange={updateWindowOpacity} onBrowserEnabledChange={updateBrowserEnabled} onBrowserThresholdChange={updateBrowserThreshold} onBrowserAllowedDomainsChange={updateBrowserAllowedDomains} onResumeBrowserToday={browserMonitor.resumeToday} onClearBrowserUsage={browserMonitor.clear} onBack={() => setView("widget")} />}
+    {view === "settings" && <SettingsPage intervalMinutes={intervalMinutes} snoozeMinutes={snoozeMinutes} voiceReminderEnabled={voiceReminderEnabled} alwaysOnTop={alwaysOnTop} windowOpacity={windowOpacity} browserMonitorEnabled={browserMonitorEnabled} browserSettingsReady={browserSettingsReady} browserThresholdMinutes={browserThresholdMinutes} browserAllowedDomains={browserAllowedDomains} browserToken={browserToken} browserConnected={browserMonitor.connected} browserActiveDomain={browserMonitor.activeDomain} browserUsageByDomain={browserMonitor.usageByDomain} browserMutedToday={browserMonitor.hasMutedDomains} onIntervalChange={updateInterval} onSnoozeChange={updateSnooze} onVoiceReminderChange={updateVoiceReminder} onAlwaysOnTopChange={updateAlwaysOnTop} onWindowOpacityChange={updateWindowOpacity} onBrowserEnabledChange={updateBrowserEnabled} onBrowserThresholdChange={updateBrowserThreshold} onBrowserAllowedDomainsChange={updateBrowserAllowedDomains} onResumeBrowserToday={browserMonitor.resumeToday} onClearBrowserUsage={browserMonitor.clear} onBack={() => setView("widget")} />}
     {scheduler.isShowing && <ReminderDialog snoozeMinutes={snoozeMinutes} onComplete={() => scheduler.act("completed")} onSnooze={() => scheduler.act("snoozed")} onSkip={() => scheduler.act("skipped")} />}
     {browserMonitor.isShowing && browserMonitor.alertDomain && !scheduler.isShowing && <BrowserUsageDialog domain={browserMonitor.alertDomain} minutes={Math.max(browserThresholdMinutes, Math.floor((browserMonitor.usageByDomain[browserMonitor.alertDomain] ?? 0) / 60))} onReset={browserMonitor.reset} onSnooze={browserMonitor.snooze} onMuteToday={browserMonitor.muteToday} />}
   </main>;
