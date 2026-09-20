@@ -3,6 +3,15 @@ const configEndpoint = "http://127.0.0.1:47831/config";
 const registrationId = "littleye-whitelist-monitor";
 let activePage;
 
+function desktopHeaders(pairingToken, includeContentType = false) {
+  const headers = {
+    "X-LittleEye-Token": pairingToken,
+    "X-LittleEye-Extension-Origin": chrome.runtime.getURL("").replace(/\/$/, "")
+  };
+  if (includeContentType) headers["Content-Type"] = "application/json";
+  return headers;
+}
+
 function normalizeDomain(value) {
   const domain = String(value ?? "").trim().toLowerCase().replace(/^\.+|\.+$/g, "");
   if (!domain || domain.length > 253 || domain.includes("*")) return undefined;
@@ -32,7 +41,7 @@ function originPatterns(domains) {
 async function fetchDesktopConfig(pairingToken) {
   if (!pairingToken) return { ok: false, reason: "missing-token" };
   try {
-    const response = await fetch(configEndpoint, { headers: { "X-LittleEye-Token": pairingToken } });
+    const response = await fetch(configEndpoint, { headers: desktopHeaders(pairingToken) });
     if (!response.ok) return { ok: false, reason: `http-${response.status}` };
     const value = await response.json();
     const domains = normalizeDomains(value.domains);
@@ -76,7 +85,7 @@ async function forwardActivity(active, at, domain) {
   try {
     const response = await fetch(activityEndpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-LittleEye-Token": pairingToken },
+      headers: desktopHeaders(pairingToken, true),
       body: JSON.stringify({ active, at, domain })
     });
     const result = { ok: response.ok, reason: response.ok ? "connected" : `http-${response.status}`, checkedAt: Date.now() };

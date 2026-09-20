@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "102",
   "name": "小眼睛网站浏览提醒",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "仅在用户授权的白名单网站前台可见时，向小眼睛发送最小活跃状态事件。",
   "permissions": ["storage", "scripting"],
   "host_permissions": ["http://127.0.0.1:47831/*"],

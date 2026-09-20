@@ -87,6 +87,24 @@ fn header(request: &Request, name: &str) -> Option<String> {
     .map(|value| value.value.as_str().to_owned())
 }
 
+fn is_valid_extension_origin(value: &str) -> bool {
+  let extension_id = value
+    .strip_prefix("chrome-extension://")
+    .or_else(|| value.strip_prefix("extension://"));
+  extension_id
+    .is_some_and(|id| id.len() == 32 && id.bytes().all(|byte| (b'a'..=b'p').contains(&byte)))
+}
+
+fn extension_source_valid(request: &Request) -> bool {
+  let Some(declared_origin) = header(request, "X-LittleEye-Extension-Origin") else {
+    return false;
+  };
+  if !is_valid_extension_origin(&declared_origin) {
+    return false;
+  }
+  header(request, "Origin").is_none_or(|origin| origin == "null" || origin == declared_origin)
+}
+
 fn respond(request: Request, status: u16, body: &str) {
   let mut response = Response::from_string(body).with_status_code(StatusCode(status));
   for (name, value) in [
@@ -94,7 +112,7 @@ fn respond(request: Request, status: u16, body: &str) {
     ("Access-Control-Allow-Methods", "GET, POST, OPTIONS"),
     (
       "Access-Control-Allow-Headers",
-      "Content-Type, X-LittleEye-Token",
+      "Content-Type, X-LittleEye-Token, X-LittleEye-Extension-Origin",
     ),
     ("Content-Type", "application/json"),
   ] {
@@ -114,8 +132,7 @@ fn run_browser_monitor_server(app: AppHandle) {
       respond(request, 204, "");
       continue;
     }
-    let origin_valid =
-      header(&request, "Origin").is_some_and(|origin| origin.starts_with("chrome-extension://"));
+    let origin_valid = extension_source_valid(&request);
     let supplied_token = header(&request, "X-LittleEye-Token");
     let monitor_state = app.state::<BrowserMonitorAuth>();
     let Ok(config_guard) = monitor_state.0.lock() else {
@@ -263,7 +280,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-  use super::is_valid_domain;
+  use super::{is_valid_domain, is_valid_extension_origin};
 
   #[test]
   fn accepts_normalized_domains() {
@@ -276,5 +293,24 @@ mod tests {
     assert!(!is_valid_domain("https://example.com"));
     assert!(!is_valid_domain("*.example.com"));
     assert!(!is_valid_domain("-bad.example"));
+  }
+
+  #[test]
+  fn accepts_chromium_extension_origins() {
+    assert!(is_valid_extension_origin(
+      "chrome-extension://makknibnidlehkkhfiicojdlgojmcepo"
+    ));
+    assert!(is_valid_extension_origin(
+      "extension://makknibnidlehkkhfiicojdlgojmcepo"
+    ));
+  }
+
+  #[test]
+  fn rejects_non_extension_or_malformed_origins() {
+    assert!(!is_valid_extension_origin("https://example.com"));
+    assert!(!is_valid_extension_origin("chrome-extension://too-short"));
+    assert!(!is_valid_extension_origin(
+      "chrome-extension://makknibnidlehkkhfiicojdlgojmcepo/options.html"
+    ));
   }
 }
