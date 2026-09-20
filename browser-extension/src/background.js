@@ -1,6 +1,7 @@
 const activityEndpoint = "http://127.0.0.1:47831/activity";
 const configEndpoint = "http://127.0.0.1:47831/config";
 const registrationId = "littleye-whitelist-monitor";
+const heartbeatAlarmName = "littleye-desktop-heartbeat";
 let activePage;
 
 function desktopHeaders(pairingToken, includeContentType = false) {
@@ -49,6 +50,29 @@ async function fetchDesktopConfig(pairingToken) {
   } catch {
     return { ok: false, reason: "desktop-unavailable" };
   }
+}
+
+async function checkDesktopConnection(pairingToken) {
+  const result = await fetchDesktopConfig(pairingToken);
+  await chrome.storage.local.set({
+    connectionStatus: {
+      ok: result.ok,
+      reason: result.ok ? "connected" : result.reason,
+      checkedAt: Date.now()
+    }
+  });
+  return result;
+}
+
+async function heartbeat() {
+  const { pairingToken } = await chrome.storage.local.get("pairingToken");
+  if (pairingToken) await checkDesktopConnection(pairingToken);
+}
+
+async function ensureHeartbeat() {
+  const alarm = await chrome.alarms.get(heartbeatAlarmName);
+  if (!alarm) await chrome.alarms.create(heartbeatAlarmName, { periodInMinutes: 1 });
+  await heartbeat();
 }
 
 async function permittedDomains(domains) {
@@ -118,7 +142,7 @@ async function handleActivity(event, sender) {
 
 chrome.runtime.onMessage.addListener((event, sender, sendResponse) => {
   if (event?.type === "read-desktop-config" && sender.id === chrome.runtime.id) {
-    void fetchDesktopConfig(event.pairingToken).then(sendResponse);
+    void checkDesktopConnection(event.pairingToken).then(sendResponse);
     return true;
   }
   if (event?.type === "sync-whitelist" && sender.id === chrome.runtime.id) {
@@ -140,9 +164,14 @@ chrome.tabs.onRemoved.addListener(tabId => {
   void forwardActivity(false, Date.now(), domain);
 });
 
+chrome.alarms.onAlarm.addListener(alarm => {
+  if (alarm.name === heartbeatAlarmName) void heartbeat();
+});
+
 async function restoreRegistration() {
   const { allowedDomains = [] } = await chrome.storage.local.get("allowedDomains");
   await syncRegisteredScripts(allowedDomains);
 }
 
 void restoreRegistration();
+void ensureHeartbeat();

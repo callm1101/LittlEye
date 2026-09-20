@@ -1,5 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 
+export type BrowserActivityEvent = { active: boolean; at: number; domain: string };
+export type BrowserMonitorSnapshot = { connected: boolean; events: BrowserActivityEvent[] };
+
 function isTauri() {
   return "__TAURI_INTERNALS__" in window;
 }
@@ -27,4 +30,9 @@ export async function startWindowDragging() {
 
 export async function setBrowserMonitorConfig(token: string | null, domains: string[]) {
   if (isTauri()) await invoke("set_browser_monitor_config", { token, domains });
+}
+
+export async function pollBrowserMonitor(): Promise<BrowserMonitorSnapshot> {
+  if (!isTauri()) return { connected: false, events: [] };
+  return invoke<BrowserMonitorSnapshot>("poll_browser_monitor");
 }

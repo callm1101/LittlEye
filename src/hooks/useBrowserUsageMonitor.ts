@@ -1,9 +1,7 @@
-import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { addDomainUsage, calculateActiveIncrement, emptyBrowserUsageState, findBrowserAlertDomain, localDayKey, nextLocalMidnight, type BrowserUsageState } from "../lib/browserUsageState";
+import { pollBrowserMonitor } from "../lib/native";
 import { browserUsageRepository } from "../repositories/browserUsageRepository";
-
-type ActivityEvent = { active: boolean; at: number; domain: string };
 
 export function useBrowserUsageMonitor(enabled: boolean, thresholdMinutes: number) {
   const [state, setState] = useState<BrowserUsageState>(() => emptyBrowserUsageState());
@@ -14,7 +12,6 @@ export function useBrowserUsageMonitor(enabled: boolean, thresholdMinutes: numbe
   const [tick, setTick] = useState(Date.now());
   const activeDomainRef = useRef<string>();
   const lastEventAtRef = useRef<number>();
-  const lastSeenAtRef = useRef<number>();
 
   useEffect(() => { void browserUsageRepository.load().then(value => { setState(value); setReady(true); }); }, []);
   useEffect(() => { if (ready) void browserUsageRepository.save(state); }, [ready, state]);
@@ -26,29 +23,44 @@ export function useBrowserUsageMonitor(enabled: boolean, thresholdMinutes: numbe
       setConnected(false);
       return;
     }
-    let unlisten: (() => void) | undefined;
-    void listen<ActivityEvent>("browser-activity", event => {
-      const { active, at, domain } = event.payload;
-      const previousDomain = activeDomainRef.current;
-      const increment = previousDomain ? calculateActiveIncrement(lastEventAtRef.current, at) : 0;
-      if (previousDomain && increment > 0) setState(current => addDomainUsage(current, previousDomain, increment));
-      activeDomainRef.current = active ? domain : undefined;
-      lastEventAtRef.current = at;
-      lastSeenAtRef.current = Date.now();
-      setActiveDomain(active ? domain : undefined);
-      setConnected(true);
-    }).then(callback => { unlisten = callback; });
-    return () => unlisten?.();
+    let cancelled = false;
+    let polling = false;
+    async function poll() {
+      if (polling) return;
+      polling = true;
+      try {
+        const snapshot = await pollBrowserMonitor();
+        if (cancelled) return;
+        setConnected(snapshot.connected);
+        if (!snapshot.connected) {
+          activeDomainRef.current = undefined;
+          setActiveDomain(undefined);
+        }
+        for (const { active, at, domain } of snapshot.events) {
+          const previousDomain = activeDomainRef.current;
+          const increment = previousDomain ? calculateActiveIncrement(lastEventAtRef.current, at) : 0;
+          if (previousDomain && increment > 0) setState(current => addDomainUsage(current, previousDomain, increment));
+          activeDomainRef.current = active ? domain : undefined;
+          lastEventAtRef.current = at;
+          setActiveDomain(active ? domain : undefined);
+        }
+      } catch {
+        if (!cancelled) setConnected(false);
+      } finally {
+        polling = false;
+      }
+    }
+    void poll();
+    const timer = window.setInterval(() => void poll(), 1_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [enabled]);
   useEffect(() => {
     if (state.dayLocal !== localDayKey(new Date(tick))) {
       setState(emptyBrowserUsageState(new Date(tick)));
       setAlertDomain(undefined);
-    }
-    if (lastSeenAtRef.current && tick - lastSeenAtRef.current > 35_000) {
-      activeDomainRef.current = undefined;
-      setActiveDomain(undefined);
-      setConnected(false);
     }
   }, [state.dayLocal, tick]);
   useEffect(() => {
@@ -78,6 +90,7 @@ export function useBrowserUsageMonitor(enabled: boolean, thresholdMinutes: numbe
     }));
   }, []);
   const clear = useCallback(async () => {
+    await pollBrowserMonitor();
     await browserUsageRepository.clear();
     activeDomainRef.current = undefined;
     setActiveDomain(undefined);

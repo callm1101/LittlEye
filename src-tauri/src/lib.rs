@@ -19,7 +19,14 @@ struct BrowserMonitorConfig {
 }
 
 #[derive(Default)]
-struct BrowserMonitorAuth(Mutex<BrowserMonitorConfig>);
+struct BrowserMonitorState {
+  config: BrowserMonitorConfig,
+  last_connected_at: Option<u64>,
+  pending_events: Vec<BrowserActivityEvent>,
+}
+
+#[derive(Default)]
+struct BrowserMonitorAuth(Mutex<BrowserMonitorState>);
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -27,6 +34,13 @@ struct BrowserActivityEvent {
   active: bool,
   at: u64,
   domain: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BrowserMonitorSnapshot {
+  connected: bool,
+  events: Vec<BrowserActivityEvent>,
 }
 
 #[tauri::command]
@@ -57,11 +71,39 @@ fn set_browser_monitor_config(
   {
     return Err("invalid browser monitor domains".into());
   }
-  *state
+  let mut monitor_state = state
     .0
     .lock()
-    .map_err(|_| "browser monitor state unavailable")? = BrowserMonitorConfig { token, domains };
+    .map_err(|_| "browser monitor state unavailable")?;
+  monitor_state.config = BrowserMonitorConfig { token, domains };
+  monitor_state.last_connected_at = None;
+  monitor_state.pending_events.clear();
   Ok(())
+}
+
+#[tauri::command]
+fn poll_browser_monitor(
+  state: tauri::State<BrowserMonitorAuth>,
+) -> Result<BrowserMonitorSnapshot, String> {
+  let now = current_time_millis();
+  let mut monitor_state = state
+    .0
+    .lock()
+    .map_err(|_| "browser monitor state unavailable")?;
+  let connected = monitor_state
+    .last_connected_at
+    .is_some_and(|at| now.saturating_sub(at) <= 75_000);
+  Ok(BrowserMonitorSnapshot {
+    connected,
+    events: std::mem::take(&mut monitor_state.pending_events),
+  })
+}
+
+fn current_time_millis() -> u64 {
+  SystemTime::now()
+    .duration_since(UNIX_EPOCH)
+    .map(|value| value.as_millis() as u64)
+    .unwrap_or_default()
 }
 
 fn is_valid_domain(value: &str) -> bool {
@@ -134,13 +176,13 @@ fn run_browser_monitor_server(app: AppHandle) {
     }
     let origin_valid = extension_source_valid(&request);
     let supplied_token = header(&request, "X-LittleEye-Token");
-    let monitor_state = app.state::<BrowserMonitorAuth>();
-    let Ok(config_guard) = monitor_state.0.lock() else {
+    let monitor_auth = app.state::<BrowserMonitorAuth>();
+    let Ok(monitor_guard) = monitor_auth.0.lock() else {
       respond(request, 503, "{\"ok\":false}");
       continue;
     };
-    let config = config_guard.clone();
-    drop(config_guard);
+    let config = monitor_guard.config.clone();
+    drop(monitor_guard);
     let token_valid = config
       .token
       .as_ref()
@@ -150,6 +192,9 @@ fn run_browser_monitor_server(app: AppHandle) {
       continue;
     }
     if request.method() == &Method::Get && request.url() == "/config" {
+      if let Ok(mut monitor_state) = monitor_auth.0.lock() {
+        monitor_state.last_connected_at = Some(current_time_millis());
+      }
       let body = serde_json::json!({ "domains": config.domains }).to_string();
       respond(request, 200, &body);
       continue;
@@ -176,13 +221,17 @@ fn run_browser_monitor_server(app: AppHandle) {
       respond(request, 401, "{\"ok\":false}");
       continue;
     }
-    let now = SystemTime::now()
-      .duration_since(UNIX_EPOCH)
-      .map(|value| value.as_millis() as u64)
-      .unwrap_or(event.at);
+    let now = current_time_millis();
     if now.abs_diff(event.at) > 5 * 60 * 1000 {
       respond(request, 400, "{\"ok\":false}");
       continue;
+    }
+    if let Ok(mut monitor_state) = monitor_auth.0.lock() {
+      monitor_state.last_connected_at = Some(now);
+      if monitor_state.pending_events.len() >= 128 {
+        monitor_state.pending_events.remove(0);
+      }
+      monitor_state.pending_events.push(event.clone());
     }
     let _ = app.emit("browser-activity", event);
     respond(request, 200, "{\"ok\":true}");
@@ -218,6 +267,7 @@ pub fn run() {
       set_always_on_top,
       start_window_dragging,
       set_browser_monitor_config,
+      poll_browser_monitor,
       show_reminder,
       show_system_notification
     ])
