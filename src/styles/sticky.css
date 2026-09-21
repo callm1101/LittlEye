@@ -58,6 +58,13 @@
 }
 
 .sticky-footer .actions { gap: .2rem; }
+.sticky-session-hint {
+  margin: .35rem 0 0;
+  color: rgba(73, 55, 22, .75);
+  font-size: .7rem;
+  line-height: 1.4;
+  text-align: center;
+}
 .text-button {
   padding: .35rem .45rem;
   color: #6f501d;
@@ -68,7 +75,7 @@
 .text-button:disabled { cursor: default; opacity: .4; }
 
 @media (prefers-color-scheme: dark) {
-  :root { color: #ede3cf; background: #2e2922; }
+  :root { color: #ede3cf; background: transparent; }
   .sticky-note {
     background:
       linear-gradient(rgba(255, 231, 161, .05) 1px, transparent 1px) 0 3.55rem / 100% 1.65rem,
@@ -78,7 +85,7 @@
   }
   .sticky-note .app-name, .sticky-note .mascot, .sticky-editor { color: #f5df9d; }
   .sticky-editor::placeholder { color: rgba(245, 223, 157, .46); }
-  .sticky-footer, .text-button { color: rgba(245, 223, 157, .72); }
+  .sticky-footer, .sticky-session-hint, .text-button { color: rgba(245, 223, 157, .82); }
   .page { background: #2e2922; }
   button, input, textarea, select { color: #ede3cf; background-color: #443d34; }
 }
