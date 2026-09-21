@@ -58,13 +58,6 @@
 }
 
 .sticky-footer .actions { gap: .2rem; }
-.sticky-session-hint {
-  margin: .35rem 0 0;
-  color: rgba(73, 55, 22, .75);
-  font-size: .7rem;
-  line-height: 1.4;
-  text-align: center;
-}
 .text-button {
   padding: .35rem .45rem;
   color: #6f501d;
@@ -85,7 +78,7 @@
   }
   .sticky-note .app-name, .sticky-note .mascot, .sticky-editor { color: #f5df9d; }
   .sticky-editor::placeholder { color: rgba(245, 223, 157, .46); }
-  .sticky-footer, .sticky-session-hint, .text-button { color: rgba(245, 223, 157, .82); }
+  .sticky-footer, .text-button { color: rgba(245, 223, 157, .82); }
   .page { background: #2e2922; }
   button, input, textarea, select { color: #ede3cf; background-color: #443d34; }
 }
