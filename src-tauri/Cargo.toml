@@ -1,6 +1,6 @@
 [package]
 name = "littleye"
-version = "0.2.0"
+version = "0.2.1"
 description = "A gentle desktop companion for graduate students"
 edition = "2021"
 
